@@ -1,0 +1,12 @@
+{
+    "python.autoComplete.extraPaths": [
+        "/home/aaron3074/yo_pussy/devel/lib/python3/dist-packages",
+        "/home/aaron3074/base_controller/devel/lib/python3/dist-packages",
+        "/opt/ros/noetic/lib/python3/dist-packages"
+    ],
+    "python.analysis.extraPaths": [
+        "/home/aaron3074/yo_pussy/devel/lib/python3/dist-packages",
+        "/home/aaron3074/base_controller/devel/lib/python3/dist-packages",
+        "/opt/ros/noetic/lib/python3/dist-packages"
+    ]
+}

@@ -1,0 +1,2 @@
+base_joy_controller_pkg
+-DCATKIN_DEVEL_PREFIX=/home/pk/newrepo/yo_pussy/devel -DCMAKE_INSTALL_PREFIX=/home/pk/newrepo/yo_pussy/install -G Unix Makefiles
