@@ -8,14 +8,19 @@ from base_joy_controller_pkg.srv import modes, modesResponse
 
 class Basic:
 
-    def __init__(self) -> None:              
+    def __init__(self) -> None:   
+        self.check_services()           
         self.master = mavutil.mavlink_connection("/dev/ttyACM0", baud=115200)
         self.thruster_subs = rospy.Subscriber("/peepeepoopoo", base_msgs, self.__callback__, queue_size=2)
         self.channel_ary = [1500] * 8
         self.master.wait_heartbeat()
         self.mode = "MANUAL"
         self.arm_state = False
-
+    def check_services(self):
+        rospy.logwarn("Waiting for /modechange and /armdisarm services to be available...")
+        rospy.wait_for_service("/modechange")
+        rospy.wait_for_service("/armdisarm")
+        rospy.logwarn("Services available. Proceeding with initialization.")
     def __callback__(self, msg):
         self.channel_ary[0] = msg.pitch 
         self.channel_ary[1] = msg.roll
@@ -27,14 +32,13 @@ class Basic:
         if msg.arm == 1 and not self.arm_state:
             self.adcm_client()
             self.arm_state = True
-            
         elif msg.arm == 0 and self.arm_state:
             self.adcm_client()
             self.arm_state = False
 
         if self.mode != msg.mode:
             self.mode = msg.mode
-            self.arm_state=False
+            self.arm_state = False
             self.adcm_client()
             self.mode_change()
 
@@ -45,7 +49,8 @@ class Basic:
             self.master.target_component,
             mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
             0, 1, 0, 0, 0, 0, 0, 0)
-        print("Arm command sent to pix")
+        rospy.logwarn("\033[94mArm command sent to pixhawk\033[0m")
+
 
     def disarm(self):
         self.master.mav.command_long_send(
@@ -53,25 +58,24 @@ class Basic:
             self.master.target_component,
             mavutil.mavlink.MAV_CMD_COMPONENT_ARM_DISARM,
             0, 0, 0, 0, 0, 0, 0, 0)
-        print("Sent disarm")
+        rospy.logwarn("\033[92mSent disarm\033[0m")
+
+
     def mode_switch(self):
-        # Check if the specified mode is valid
         if self.mode not in self.master.mode_mapping():
+            rospy.logwarn("Invalid mode specified: %s" % self.mode)
             exit(1)
-        
-        # Get the mode ID from the mode mapping
         mode_id = self.master.mode_mapping()[self.mode]
-        
-        # Send set mode command to the autopilot
         self.master.mav.set_mode_send(
             self.master.target_system,
             mavutil.mavlink.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
             mode_id
         )
-        print("Mode set to", self.mode)
+        rospy.logwarn("Mode set to %s" % self.mode)
+
     def set_rc_channel_pwm(self, id, pwm):
         if id < 1:
-            print("Channel does not exist.")
+            rospy.logwarn("Channel does not exist.")
             return
 
         if id < 9:
@@ -96,25 +100,22 @@ class Basic:
         try:
             arm_disarm = rospy.ServiceProxy("/armdisarm", adcm)
             response = arm_disarm(self.arm_state)
-            print(response.arm)
-            if(response.arm):
+            if response.arm:
                 self.arm()
             else:
                 self.disarm()
         except rospy.ServiceException as e:
-            rospy.logerr("Service call failed: %s" % e)
-            return False
-
+            rospy.logwarn("Service call failed: %s" % e)
 
     def mode_change(self):
         try:
             mode_change = rospy.ServiceProxy("/modechange", modes)
             response = mode_change(self.mode)
-            print(response.currmode)
-            return response
+            self.mode = response.currmode
+            self.mode_switch()
         except rospy.ServiceException as e:
-            rospy.logerr("Service call failed: %s" % e)
-            return None
+            rospy.logwarn("Service call failed: %s" % e)
+
 if __name__ == "__main__":
     rospy.init_node('listener', anonymous=True)
     obj = Basic() 

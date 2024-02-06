@@ -1,0 +1,4 @@
+<launch>
+<node pkg="base_joy_controller_pkg" type="armdisarmservice" name="service_node" output="screen"></node>
+<node pkg="base_joy_controller_pkg" type="modeservice" name="service_Mode_node" output="screen"></node>
+</launch>

@@ -8,14 +8,19 @@ from base_joy_controller_pkg.srv import modes, modesResponse
 
 class Basic:
 
-    def __init__(self) -> None:              
+    def __init__(self) -> None:   
+        self.check_services()           
         self.master = mavutil.mavlink_connection("/dev/ttyACM0", baud=115200)
         self.thruster_subs = rospy.Subscriber("/peepeepoopoo", base_msgs, self.__callback__, queue_size=2)
         self.channel_ary = [1500] * 8
         self.master.wait_heartbeat()
         self.mode = "MANUAL"
         self.arm_state = False
-
+    def check_services(self):
+        rospy.logwarn("Waiting for /modechange and /armdisarm services to be available...")
+        rospy.wait_for_service("/modechange")
+        rospy.wait_for_service("/armdisarm")
+        rospy.logwarn("Services available. Proceeding with initialization.")
     def __callback__(self, msg):
         self.channel_ary[0] = msg.pitch 
         self.channel_ary[1] = msg.roll
@@ -27,7 +32,6 @@ class Basic:
         if msg.arm == 1 and not self.arm_state:
             self.adcm_client()
             self.arm_state = True
-            
         elif msg.arm == 0 and self.arm_state:
             self.adcm_client()
             self.arm_state = False
@@ -58,15 +62,10 @@ class Basic:
 
 
     def mode_switch(self):
-        # Check if the specified mode is valid
         if self.mode not in self.master.mode_mapping():
             rospy.logwarn("Invalid mode specified: %s" % self.mode)
             exit(1)
-
-        # Get the mode ID from the mode mapping
         mode_id = self.master.mode_mapping()[self.mode]
-
-        # Send set mode command to the autopilot
         self.master.mav.set_mode_send(
             self.master.target_system,
             mavutil.mavlink.MAV_MODE_FLAG_CUSTOM_MODE_ENABLED,
